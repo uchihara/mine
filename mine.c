@@ -134,17 +134,26 @@ static WINDOW *wfield;
 static WINDOW *wguide;
 static WINDOW *wdebug;
 
-static void init_canvas(void)
+static void init_screen(void)
 {
 	initscr();
 	cbreak();
 	noecho();
 	keypad(stdscr, TRUE);
-	wcanvas = subwin(stdscr, canvas_h, canvas_w, 0, 0);
-	wdebug = subwin(stdscr, 1, 40, 0, 30);
-	wguide = subwin(stdscr, 1, 70, 21, 0);
+}
+
+static void init_canvas(void)
+{
+	wcanvas = subwin(stdscr, canvas_h, canvas_w, 1, 0);
+	wguide = subwin(stdscr, 1, COLS, 0, 0);
+	wdebug = subwin(stdscr, 1, COLS, LINES-1, 0);
 	wattron(wguide, A_BOLD);
-	wfield = subwin(wcanvas, y_max, x_max, 1, 1);
+	wfield = subwin(wcanvas, y_max, x_max, 2, 1);
+}
+
+static void destroy_screen(void)
+{
+	endwin();
 }
 
 static void destroy_canvas(void)
@@ -153,7 +162,6 @@ static void destroy_canvas(void)
 	if (wdebug) delwin(wdebug);
 	if (wguide) delwin(wguide);
 	if (wcanvas) delwin(wcanvas);
-	endwin();
 }
 
 static void draw_canvas(void)
@@ -222,9 +230,9 @@ static void usage(const char *prog)
 	printf("usage: %s [-y height] [-x width] [-b bombs]\n", prog);
 }
 
-static int outbounds(int y, int x)
+static int outbounds(int y, int x, int nbombs)
 {
-	return y < 0 || 20 < y || x < 0 || 20 < x ;
+	return y < 0 || LINES < y || x < 0 || COLS < x || y*x < nbombs;
 }
 
 static void gameover(int no)
@@ -311,6 +319,9 @@ int main(int argc, char **argv)
 	int y = 10, x = 20;
 	int nbombs = 50;
 
+	init_screen();
+	handle_signal();
+
 	while ((c = getopt(argc, argv, "y:x:b:")) != -1) {
 		switch (c) {
 			case 'y': y = atoi(optarg); break;
@@ -320,14 +331,13 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (!opterr || outbounds(y, x)) {
+	if (!opterr || outbounds(y, x, nbombs)) {
 		usage(*argv);
 		return 1;
 	}
 
 	setup_fields(y, x, nbombs);
 	init_canvas();
-	handle_signal();
 	draw_canvas();
 	while (!sig && (c = get_input()) != EOF) {
 		if (K_MOVE(c)) {
@@ -351,7 +361,7 @@ int main(int argc, char **argv)
 	field *p = get_field(curr_y, curr_x);
 
 	wclear(wdebug);
-	mvwprintw(wdebug, 0, 0, "y:%d x:%d st:%s", curr_y, curr_x, dump_field(p));
+	mvwprintw(wdebug, 0, 0, "%dx%d, y:%d x:%d st:%s", LINES, COLS, curr_y, curr_x, dump_field(p));
 	wrefresh(wdebug);
 }
 #endif
@@ -359,6 +369,7 @@ int main(int argc, char **argv)
 		wrefresh(wfield);
 	}
 	destroy_canvas();
+	destroy_screen();
 
 	return 0;
 }
