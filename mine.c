@@ -180,9 +180,11 @@ static void draw_canvas(void)
 	wrefresh(wcanvas);
 }
 
+static int curr_y, curr_x;
 static int get_input(void)
 {
 	int c;
+	wmove(wfield, curr_y, curr_x);
 	c = wgetch(wfield);
 	return (c == K_QUIT) ? EOF : c;
 }
@@ -199,7 +201,6 @@ static void reverse_mark(int y, int x)
 	}
 }
 
-static int curr_y, curr_x;
 
 static void move_cursol(int c)
 {
@@ -238,6 +239,7 @@ static void gameover(int no)
 		"ALL CLEAR",
 		"BOMBED",
 	};
+	wclear(wguide);
 	mvwprintw(wguide, 0, 0, "%s, hit any key to quit...", msgs[no]);
 	getch();
 }
@@ -312,6 +314,27 @@ static int all_clear(void)
 	return 1;
 }
 
+static int rest_bombs(int nbombs)
+{
+	int y, x;
+	field *p;
+
+	for (y = 0; y < y_max; y++) {
+		for (x = 0; x < x_max; x++) {
+			p = get_field(y, x);
+			if (p->marked) nbombs--;
+		}
+	}
+	return nbombs < 0 ? 0 : nbombs;
+}
+
+static void update_guide(int nbombs)
+{
+	wclear(wguide);
+	wprintw(wguide, "move:h,j,k,l open:<spc> mark:m quit:q rest:%d", rest_bombs(nbombs));
+	wrefresh(wguide);
+}
+
 int main(int argc, char **argv)
 {
 	int c;
@@ -339,24 +362,31 @@ int main(int argc, char **argv)
 	setup_fields(y, x, nbombs);
 	init_canvas();
 	draw_canvas();
-	while (!sig && (c = get_input()) != EOF) {
+
+	while (!sig) {
+		update_guide(nbombs);
+
+		if ((c = get_input()) == EOF) break;
+
 		if (K_MOVE(c)) {
 			move_cursol(c);
 
-		} else if (c == K_MARK) {
-			apply_mark();
+		} else {
+			if (c == K_MARK) {
+				apply_mark();
 
-		} else if (c == K_OPEN) {
-			int isbomb = open_field(curr_y, curr_x);
-			if (isbomb) {
-				gameover(MSG_BOMBED);
+			} else if (c == K_OPEN) {
+				int isbomb = open_field(curr_y, curr_x);
+				if (isbomb) {
+					gameover(MSG_BOMBED);
+					break;
+				}
+			}
+
+			if (all_clear()) {
+				gameover(MSG_CLEAR);
 				break;
 			}
-		}
-
-		if (all_clear()) {
-			gameover(MSG_CLEAR);
-			break;
 		}
 
 		if (debug) {
@@ -367,7 +397,6 @@ int main(int argc, char **argv)
 			wrefresh(wdebug);
 		}
 
-		wmove(wfield, curr_y, curr_x);
 		wrefresh(wfield);
 	}
 
