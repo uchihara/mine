@@ -1,0 +1,332 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
+#include <curses.h>
+#include <signal.h>
+#include <stdarg.h>
+
+#define K_UP    'k'
+#define K_DOWN  'j'
+#define K_LEFT  'h'
+#define K_RIGHT 'l'
+#define K_MOVE(c) ((c) == K_UP || (c) == K_DOWN || (c) == K_LEFT || (c) == K_RIGHT)
+#define K_QUIT  'q'
+#define K_MARK  'm'
+#define K_OPEN  ' '
+
+#define M_BOMB  '*'
+#define M_MARK  '@'
+#define M_CLOSE 'X'
+#define M_OPEN  ' '
+
+typedef struct field {
+	unsigned int sentinel : 1;
+	unsigned int bomb : 1;
+	unsigned int opened : 1;
+	unsigned int marked : 1;
+	unsigned int reserve : 4;
+} field;
+
+static void dprintf(const char *fmt, ...)
+{
+	static FILE *fp;
+	va_list ap;
+
+	if (!fp) {
+		fp = fopen("log", "a");
+	}
+
+	va_start(ap, fmt);
+	vfprintf(fp, fmt, ap);
+	fflush(fp);
+	va_end(ap);
+}
+
+static const char *dump_field(const field *p)
+{
+	static char buf[128];
+	*buf = '\0';
+	if (p->sentinel) strcat(buf, " sentinel");
+	if (p->bomb)     strcat(buf, " bomb");
+	if (p->opened)   strcat(buf, " opened");
+	if (p->marked)   strcat(buf, " marked");
+	return buf;
+}
+
+static field *fields;
+static int y_max, x_max;
+static int canvas_h, canvas_w;
+
+static field *get_field(int y, int x)
+{
+	return &fields[(y+1)*canvas_w + x+1];
+}
+
+static void setup_fields(int y, int x, int nbombs)
+{
+	int i;
+	field *p;
+
+	srand(time(NULL));
+	y_max = y;
+	x_max = x;
+	canvas_h = y_max+2;
+	canvas_w = x_max+2;
+	
+	fields = (field *)calloc(canvas_h * canvas_w, sizeof(field));
+
+	for (i = 0; i < canvas_h * canvas_w; i++) {
+		fields[i].sentinel = 1;
+	}
+
+	for (y = 0; y < y_max; y++) {
+		for (x = 0; x < x_max; x++) {
+			p = get_field(y, x);
+			p->sentinel = 0;
+			p->bomb = 0;
+		}
+	}
+
+	while (nbombs > 0) {
+		field *p;
+		y = rand() % y_max;
+		x = rand() % x_max;
+		p = get_field(y, x);
+		if (!p->bomb) {
+			p->bomb = 1;
+			nbombs--;
+		}
+	}
+
+}
+
+static int sig;
+static void sig_hndl(int signo)
+{
+	sig = 1;
+}
+
+static void handle_signal(void)
+{
+	struct sigaction sigact;
+
+	memset(&sigact, 0, sizeof sigact);
+	sigact.sa_handler = sig_hndl;
+/*
+	sigaction(SIGTERM, &sigact, NULL);
+	sigaction(SIGINT, &sigact, NULL);
+	sigaction(SIGSEGV, &sigact, NULL);
+	sigaction(SIGHUP, &sigact, NULL);
+*/
+}
+
+static WINDOW *wcanvas;
+static WINDOW *wfield;
+static WINDOW *wguide;
+static WINDOW *wdebug;
+
+static void init_canvas(void)
+{
+	initscr();
+	cbreak();
+	noecho();
+	keypad(stdscr, TRUE);
+	wcanvas = subwin(stdscr, canvas_h, canvas_w, 0, 0);
+	wdebug = subwin(stdscr, 1, 40, 0, 30);
+	wguide = subwin(stdscr, 1, 70, 21, 0);
+	wattron(wguide, A_BOLD);
+	wfield = subwin(wcanvas, y_max, x_max, 1, 1);
+}
+
+static void destroy_canvas(void)
+{
+	if (wfield) delwin(wfield);
+	if (wdebug) delwin(wdebug);
+	if (wguide) delwin(wguide);
+	if (wcanvas) delwin(wcanvas);
+	endwin();
+}
+
+static void draw_canvas(void)
+{
+	int y, x;
+
+	box(wcanvas, '|', '-');
+	for (y = 0; y < y_max; y++) {
+		for (x = 0; x < x_max; x++) {
+			mvwaddch(wfield, y, x, M_CLOSE);
+#ifdef DEBUG
+			if (get_field(y, x)->bomb) {
+				mvwaddch(wfield, y, x, M_BOMB);
+			}
+#endif
+		}
+	}
+	wrefresh(wcanvas);
+}
+
+static int get_input(void)
+{
+	int c;
+	c = wgetch(wfield);
+	return (c == K_QUIT) ? EOF : c;
+}
+
+static void reverse_mark(int y, int x)
+{
+	field *p = get_field(y, x);
+	if (p->marked) {
+		p->marked = 0;
+		mvwaddch(wfield, y, x, M_CLOSE);
+	} else {
+		p->marked = 1;
+		mvwaddch(wfield, y, x, M_MARK);
+	}
+}
+
+static int curr_y, curr_x;
+
+static void move_cursol(int c)
+{
+	switch (c) {
+		case 'h': curr_x--; break;
+		case 'j': curr_y++; break;
+		case 'k': curr_y--; break;
+		case 'l': curr_x++; break;
+	}
+	if (curr_x < 0) curr_x = 0;
+	if (x_max <= curr_x) curr_x = x_max-1;
+	if (curr_y < 0) curr_y = 0;
+	if (y_max <= curr_y) curr_y = y_max-1;
+}
+
+static void apply_mark(void)
+{
+	if (!get_field(curr_y, curr_x)->opened) {
+		reverse_mark(curr_y, curr_x);
+	}
+}
+
+static void usage(const char *prog)
+{
+	printf("usage: %s [-y height] [-x width] [-b bombs]\n", prog);
+}
+
+static int outbounds(int y, int x)
+{
+	return y < 0 || 20 < y || x < 0 || 20 < x ;
+}
+
+static void gameover(void)
+{
+	mvwprintw(wguide, 0, 0, "GAME OVER, hit any key to quit...");
+	getch();
+}
+
+static void set_around_bombs(int y, int x)
+{
+	int dy, dx;
+	int around_bombs = 0;
+	struct dir { int y, x; } dirs[8];
+	int ndirs = 0;
+
+	for (dy = -1; dy <= 1; dy++) {
+		for (dx = -1; dx <= 1; dx++) {
+			field *p = get_field(y+dy, x+dx);
+
+			if (p->sentinel || p->opened) {
+				continue;
+
+			} else if (p->bomb) {
+				around_bombs++;
+
+			} else {
+				dirs[ndirs].y = y+dy;
+				dirs[ndirs].x = x+dx;
+				ndirs++;
+			}
+
+		}
+	}
+
+	get_field(y, x)->opened = 1;
+	if (around_bombs != 0) {
+		mvwprintw(wfield, y, x, "%d", around_bombs);
+	} else {
+		mvwaddch(wfield, y, x, M_OPEN);
+		while (--ndirs >= 0) {
+			int ny = dirs[ndirs].y;
+			int nx = dirs[ndirs].x;
+			set_around_bombs(ny, nx);
+		}
+	}
+}
+
+static int open_field(int y, int x)
+{
+	field *p;
+
+	p = get_field(y, x);
+	if (p->bomb) {
+		return 1;
+	} else {
+		p->opened = 1;
+		set_around_bombs(y, x);
+		return 0;
+	}
+}
+
+int main(int argc, char **argv)
+{
+	int c;
+	int y = 10, x = 20;
+	int nbombs = 50;
+
+	while ((c = getopt(argc, argv, "y:x:b:")) != -1) {
+		switch (c) {
+			case 'y': y = atoi(optarg); break;
+			case 'x': x = atoi(optarg); break;
+			case 'b': nbombs = atoi(optarg); break;
+			default: opterr = 1; break;
+		}
+	}
+
+	if (!opterr || outbounds(y, x)) {
+		usage(*argv);
+		return 1;
+	}
+
+	setup_fields(y, x, nbombs);
+	init_canvas();
+	handle_signal();
+	draw_canvas();
+	while (!sig && (c = get_input()) != EOF) {
+		if (K_MOVE(c)) {
+			move_cursol(c);
+		} else if (c == K_MARK) {
+			apply_mark();
+		} else if (c == K_OPEN) {
+			int isbomb = open_field(curr_y, curr_x);
+			if (isbomb) {
+				gameover();
+				break;
+			}
+		}
+#ifdef DEBUG
+{
+	field *p = get_field(curr_y, curr_x);
+
+	wclear(wdebug);
+	mvwprintw(wdebug, 0, 0, "y:%d x:%d st:%s", curr_y, curr_x, dump_field(p));
+	wrefresh(wdebug);
+}
+#endif
+		wmove(wfield, curr_y, curr_x);
+		wrefresh(wfield);
+	}
+	destroy_canvas();
+
+	return 0;
+}
