@@ -21,6 +21,9 @@
 #define M_CLOSE 'X'
 #define M_OPEN  ' '
 
+#define MSG_CLEAR  0
+#define MSG_BOMBED 1
+
 typedef struct field {
 	unsigned int sentinel : 1;
 	unsigned int bomb : 1;
@@ -28,6 +31,8 @@ typedef struct field {
 	unsigned int marked : 1;
 	unsigned int reserve : 4;
 } field;
+
+#if DEBUG
 
 static void dprintf(const char *fmt, ...)
 {
@@ -54,6 +59,8 @@ static const char *dump_field(const field *p)
 	if (p->marked)   strcat(buf, " marked");
 	return buf;
 }
+
+#endif
 
 static field *fields;
 static int y_max, x_max;
@@ -157,13 +164,14 @@ static void draw_canvas(void)
 	for (y = 0; y < y_max; y++) {
 		for (x = 0; x < x_max; x++) {
 			mvwaddch(wfield, y, x, M_CLOSE);
-#ifdef DEBUG
+#if DEBUG
 			if (get_field(y, x)->bomb) {
 				mvwaddch(wfield, y, x, M_BOMB);
 			}
 #endif
 		}
 	}
+	wmove(wfield, 0, 0);
 	wrefresh(wcanvas);
 }
 
@@ -219,9 +227,13 @@ static int outbounds(int y, int x)
 	return y < 0 || 20 < y || x < 0 || 20 < x ;
 }
 
-static void gameover(void)
+static void gameover(int no)
 {
-	mvwprintw(wguide, 0, 0, "GAME OVER, hit any key to quit...");
+	static const char *msgs[] = {
+		"ALL CLEAR",
+		"BOMBED",
+	};
+	mvwprintw(wguide, 0, 0, "%s, hit any key to quit...", msgs[no]);
 	getch();
 }
 
@@ -278,6 +290,21 @@ static int open_field(int y, int x)
 	}
 }
 
+static int all_clear(void)
+{
+	int y, x;
+	field *p;
+
+	for (y = 0; y < y_max; y++) {
+		for (x = 0; x < x_max; x++) {
+			p = get_field(y, x);
+			if (!p->opened && !p->marked) return 0;
+			if (p->bomb != p->marked) return 0;
+		}
+	}
+	return 1;
+}
+
 int main(int argc, char **argv)
 {
 	int c;
@@ -310,11 +337,16 @@ int main(int argc, char **argv)
 		} else if (c == K_OPEN) {
 			int isbomb = open_field(curr_y, curr_x);
 			if (isbomb) {
-				gameover();
+				gameover(MSG_BOMBED);
 				break;
 			}
 		}
-#ifdef DEBUG
+
+		if (all_clear()) {
+			gameover(MSG_CLEAR);
+			break;
+		}
+#if DEBUG
 {
 	field *p = get_field(curr_y, curr_x);
 
