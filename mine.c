@@ -32,8 +32,8 @@ typedef struct field {
 	unsigned int reserve : 4;
 } field;
 
-#if DEBUG
-
+static int debug;
+#if 0
 static void dprintf(const char *fmt, ...)
 {
 	static FILE *fp;
@@ -48,6 +48,7 @@ static void dprintf(const char *fmt, ...)
 	fflush(fp);
 	va_end(ap);
 }
+#endif
 
 static const char *dump_field(const field *p)
 {
@@ -59,8 +60,6 @@ static const char *dump_field(const field *p)
 	if (p->marked)   strcat(buf, " marked");
 	return buf;
 }
-
-#endif
 
 static field *fields;
 static int y_max, x_max;
@@ -172,11 +171,9 @@ static void draw_canvas(void)
 	for (y = 0; y < y_max; y++) {
 		for (x = 0; x < x_max; x++) {
 			mvwaddch(wfield, y, x, M_CLOSE);
-#if DEBUG
-			if (get_field(y, x)->bomb) {
+			if (debug && get_field(y, x)->bomb) {
 				mvwaddch(wfield, y, x, M_BOMB);
 			}
-#endif
 		}
 	}
 	wmove(wfield, 0, 0);
@@ -195,7 +192,7 @@ static void reverse_mark(int y, int x)
 	field *p = get_field(y, x);
 	if (p->marked) {
 		p->marked = 0;
-		mvwaddch(wfield, y, x, M_CLOSE);
+		mvwaddch(wfield, y, x, debug && p->bomb ? M_BOMB : M_CLOSE);
 	} else {
 		p->marked = 1;
 		mvwaddch(wfield, y, x, M_MARK);
@@ -289,7 +286,9 @@ static int open_field(int y, int x)
 	field *p;
 
 	p = get_field(y, x);
-	if (p->bomb) {
+	if (p->marked) {
+		return 0;
+	} else if (p->bomb) {
 		return 1;
 	} else {
 		p->opened = 1;
@@ -317,16 +316,17 @@ int main(int argc, char **argv)
 {
 	int c;
 	int y = 10, x = 20;
-	int nbombs = 50;
+	int nbombs = 25;
 
 	init_screen();
 	handle_signal();
 
-	while ((c = getopt(argc, argv, "y:x:b:")) != -1) {
+	while ((c = getopt(argc, argv, "y:x:b:D")) != -1) {
 		switch (c) {
 			case 'y': y = atoi(optarg); break;
 			case 'x': x = atoi(optarg); break;
 			case 'b': nbombs = atoi(optarg); break;
+			case 'D': debug = 1; break;
 			default: opterr = 1; break;
 		}
 	}
@@ -342,8 +342,10 @@ int main(int argc, char **argv)
 	while (!sig && (c = get_input()) != EOF) {
 		if (K_MOVE(c)) {
 			move_cursol(c);
+
 		} else if (c == K_MARK) {
 			apply_mark();
+
 		} else if (c == K_OPEN) {
 			int isbomb = open_field(curr_y, curr_x);
 			if (isbomb) {
@@ -356,20 +358,21 @@ int main(int argc, char **argv)
 			gameover(MSG_CLEAR);
 			break;
 		}
-#if DEBUG
-{
-	field *p = get_field(curr_y, curr_x);
 
-	wclear(wdebug);
-	mvwprintw(wdebug, 0, 0, "%dx%d, y:%d x:%d st:%s", LINES, COLS, curr_y, curr_x, dump_field(p));
-	wrefresh(wdebug);
-}
-#endif
+		if (debug) {
+			field *p = get_field(curr_y, curr_x);
+
+			wclear(wdebug);
+			mvwprintw(wdebug, 0, 0, "%dx%d, y:%d x:%d st:%s", LINES, COLS, curr_y, curr_x, dump_field(p));
+			wrefresh(wdebug);
+		}
+
 		wmove(wfield, curr_y, curr_x);
 		wrefresh(wfield);
 	}
+
 	destroy_canvas();
 	destroy_screen();
 
-	return 0;
+	return 1;
 }
