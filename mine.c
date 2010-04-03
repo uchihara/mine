@@ -20,6 +20,7 @@
 #define M_MARK  '@'
 #define M_CLOSE '.'
 #define M_OPEN  ' '
+#define M_WRONG 'X'
 
 #define MSG_CLEAR  0
 #define MSG_BOMBED 1
@@ -337,6 +338,26 @@ static void update_guide(int nbombs)
 	wnoutrefresh(wguide);
 }
 
+static void draw_answer(void)
+{
+	int y, x;
+	field *p;
+
+	for (y = 0; y < y_max; y++) {
+		for (x = 0; x < x_max; x++) {
+			p = get_field(y, x);
+			if (p->marked) {
+				if (!p->bomb) {
+					mvwaddch(wfield, y, x, M_WRONG);
+				}
+			} else if (!p->opened) {
+				mvwaddch(wfield, y, x, p->bomb ? M_BOMB : M_OPEN);
+			}
+		}
+	}
+	wnoutrefresh(wfield);
+}
+
 int main(int argc, char **argv)
 {
 	int c;
@@ -389,6 +410,7 @@ int main(int argc, char **argv)
 			} else if (c == K_OPEN) {
 				int isbomb = open_field(curr_y, curr_x);
 				if (isbomb) {
+					draw_answer();
 					gameover(MSG_BOMBED);
 					break;
 				}
