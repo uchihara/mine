@@ -11,10 +11,10 @@
 #define K_DOWN  'j'
 #define K_LEFT  'h'
 #define K_RIGHT 'l'
-#define K_MOVE(c) ((c) == K_UP || (c) == KEY_UP || (c) == K_DOWN || (c) == KEY_DOWN || (c) == K_LEFT || (c) == KEY_LEFT || (c) == K_RIGHT || (c) == KEY_RIGHT)
+#define K_ISMOVE(c) ((c) == K_UP || (c) == KEY_UP || (c) == K_DOWN || (c) == KEY_DOWN || (c) == K_LEFT || (c) == KEY_LEFT || (c) == K_RIGHT || (c) == KEY_RIGHT)
 #define K_QUIT  'q'
 #define K_MARK  'm'
-#define K_OPEN  'o'
+#define K_OPEN  ' '
 
 #define M_BOMB  '*'
 #define M_MARK  '@'
@@ -284,6 +284,7 @@ static void set_around_bombs(int y, int x)
 			set_around_bombs(ny, nx);
 		}
 	}
+	wnoutrefresh(wfield);
 }
 
 static int open_field(int y, int x)
@@ -334,7 +335,7 @@ static int rest_bombs(int nbombs)
 static void update_guide(int nbombs)
 {
 	werase(wguide);
-	wprintw(wguide, "move:<cursol>,h,j,k,l open:o mark:m quit:q rest:%d", rest_bombs(nbombs));
+	wprintw(wguide, "move:<cursol>,h,j,k,l open:<spc> mark:m quit:q rest:%d", rest_bombs(nbombs));
 	wnoutrefresh(wguide);
 }
 
@@ -362,7 +363,7 @@ int main(int argc, char **argv)
 {
 	int c;
 	int y = 10, x = 20;
-	int nbombs = 25;
+	int nbombs = 0;
 
 	init_screen();
 	handle_signal();
@@ -377,6 +378,7 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (!nbombs) nbombs = y * x * 0.25;
 	if (!opterr || outbounds(y, x, nbombs)) {
 		usage(*argv);
 		return 1;
@@ -400,7 +402,7 @@ int main(int argc, char **argv)
 
 		if ((c = get_input()) == EOF) break;
 
-		if (K_MOVE(c)) {
+		if (K_ISMOVE(c)) {
 			move_cursol(c);
 
 		} else {
