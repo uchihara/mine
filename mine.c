@@ -177,7 +177,8 @@ static void draw_canvas(void)
 		}
 	}
 	wmove(wfield, 0, 0);
-	wrefresh(wcanvas);
+//	wrefresh(wcanvas);
+	wnoutrefresh(wcanvas);
 }
 
 static int curr_y, curr_x;
@@ -200,7 +201,6 @@ static void reverse_mark(int y, int x)
 		mvwaddch(wfield, y, x, M_MARK);
 	}
 }
-
 
 static void move_cursol(int c)
 {
@@ -239,8 +239,10 @@ static void gameover(int no)
 		"ALL CLEAR",
 		"BOMBED",
 	};
-	wclear(wguide);
+	werase(wguide);
 	mvwprintw(wguide, 0, 0, "%s, hit any key to quit...", msgs[no]);
+	wnoutrefresh(wguide);
+	refresh();
 	getch();
 }
 
@@ -330,9 +332,9 @@ static int rest_bombs(int nbombs)
 
 static void update_guide(int nbombs)
 {
-	wclear(wguide);
+	werase(wguide);
 	wprintw(wguide, "move:h,j,k,l open:<spc> mark:m quit:q rest:%d", rest_bombs(nbombs));
-	wrefresh(wguide);
+	wnoutrefresh(wguide);
 }
 
 int main(int argc, char **argv)
@@ -364,7 +366,16 @@ int main(int argc, char **argv)
 	draw_canvas();
 
 	while (!sig) {
+		if (debug) {
+			field *p = get_field(curr_y, curr_x);
+
+			werase(wdebug);
+			mvwprintw(wdebug, 0, 0, "%dx%d, y:%d x:%d st:%s", LINES, COLS, curr_y, curr_x, dump_field(p));
+			wnoutrefresh(wdebug);
+		}
+
 		update_guide(nbombs);
+		refresh();
 
 		if ((c = get_input()) == EOF) break;
 
@@ -389,15 +400,7 @@ int main(int argc, char **argv)
 			}
 		}
 
-		if (debug) {
-			field *p = get_field(curr_y, curr_x);
-
-			wclear(wdebug);
-			mvwprintw(wdebug, 0, 0, "%dx%d, y:%d x:%d st:%s", LINES, COLS, curr_y, curr_x, dump_field(p));
-			wrefresh(wdebug);
-		}
-
-		wrefresh(wfield);
+		wnoutrefresh(wfield);
 	}
 
 	destroy_canvas();
