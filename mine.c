@@ -11,14 +11,14 @@
 #define K_DOWN  'j'
 #define K_LEFT  'h'
 #define K_RIGHT 'l'
-#define K_MOVE(c) ((c) == K_UP || (c) == K_DOWN || (c) == K_LEFT || (c) == K_RIGHT)
+#define K_MOVE(c) ((c) == K_UP || (c) == KEY_UP || (c) == K_DOWN || (c) == KEY_DOWN || (c) == K_LEFT || (c) == KEY_LEFT || (c) == K_RIGHT || (c) == KEY_RIGHT)
 #define K_QUIT  'q'
 #define K_MARK  'm'
-#define K_OPEN  ' '
+#define K_OPEN  'o'
 
 #define M_BOMB  '*'
 #define M_MARK  '@'
-#define M_CLOSE 'X'
+#define M_CLOSE '.'
 #define M_OPEN  ' '
 
 #define MSG_CLEAR  0
@@ -138,7 +138,6 @@ static void init_screen(void)
 	initscr();
 	cbreak();
 	noecho();
-	keypad(stdscr, TRUE);
 }
 
 static void init_canvas(void)
@@ -148,6 +147,7 @@ static void init_canvas(void)
 	wdebug = subwin(stdscr, 1, COLS, LINES-1, 0);
 	wattron(wguide, A_BOLD);
 	wfield = subwin(wcanvas, y_max, x_max, 2, 1);
+	keypad(wfield, TRUE);
 }
 
 static void destroy_screen(void)
@@ -205,10 +205,10 @@ static void reverse_mark(int y, int x)
 static void move_cursol(int c)
 {
 	switch (c) {
-		case 'h': curr_x--; break;
-		case 'j': curr_y++; break;
-		case 'k': curr_y--; break;
-		case 'l': curr_x++; break;
+		case K_UP:    case KEY_UP:    curr_y--; break;
+		case K_DOWN:  case KEY_DOWN:  curr_y++; break;
+		case K_LEFT:  case KEY_LEFT:  curr_x--; break;
+		case K_RIGHT: case KEY_RIGHT: curr_x++; break;
 	}
 	if (curr_x < 0) curr_x = 0;
 	if (x_max <= curr_x) curr_x = x_max-1;
@@ -333,7 +333,7 @@ static int rest_bombs(int nbombs)
 static void update_guide(int nbombs)
 {
 	werase(wguide);
-	wprintw(wguide, "move:h,j,k,l open:<spc> mark:m quit:q rest:%d", rest_bombs(nbombs));
+	wprintw(wguide, "move:<cursol>,h,j,k,l open:o mark:m quit:q rest:%d", rest_bombs(nbombs));
 	wnoutrefresh(wguide);
 }
 
