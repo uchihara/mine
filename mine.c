@@ -7,6 +7,7 @@
 #include <curses.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <errno.h>
 
 #define K_UP    'k'
 #define K_DOWN  'j'
@@ -19,7 +20,8 @@
 
 #define T_TIMEOUT 100 * 1000 * 1000;
 #define F_QUIT 0
-#define F_TIMEOUT -1
+#define F_ERROR -1
+#define F_TIMEOUT -2
 
 #define M_BOMB  '*'
 #define M_MARK  '@'
@@ -29,6 +31,7 @@
 
 #define MSG_CLEAR  0
 #define MSG_BOMBED 1
+#define MSG_ERROR 2
 
 typedef struct field {
 	unsigned int sentinel : 1;
@@ -39,22 +42,17 @@ typedef struct field {
 } field;
 
 static int debug;
-#if 0
+static WINDOW *wdebug;
 static void dprintf(const char *fmt, ...)
 {
-	static FILE *fp;
 	va_list ap;
 
-	if (!fp) {
-		fp = fopen("log", "a");
-	}
-
 	va_start(ap, fmt);
-	vfprintf(fp, fmt, ap);
-	fflush(fp);
+	werase(wdebug);
+	vwprintw(wdebug, fmt, ap);
+	wnoutrefresh(wdebug);
 	va_end(ap);
 }
-#endif
 
 static const char *dump_field(const field *p)
 {
@@ -124,20 +122,18 @@ static void handle_signal(void)
 {
 	struct sigaction sigact;
 
-	memset(&sigact, 0, sizeof sigact);
+	sigemptyset(&sigact.sa_mask);
 	sigact.sa_handler = sig_hndl;
-/*
+	sigact.sa_flags = SA_RESTART;
 	sigaction(SIGTERM, &sigact, NULL);
 	sigaction(SIGINT, &sigact, NULL);
 	sigaction(SIGSEGV, &sigact, NULL);
 	sigaction(SIGHUP, &sigact, NULL);
-*/
 }
 
 static WINDOW *wcanvas;
 static WINDOW *wfield;
 static WINDOW *wguide;
-static WINDOW *wdebug;
 
 static void init_screen(void)
 {
@@ -191,6 +187,7 @@ static int get_input(void)
 	int c;
 	fd_set rfds;
 	struct timespec tout;
+	int ret;
 
 	tout.tv_sec = 0;
 	tout.tv_nsec = T_TIMEOUT;
@@ -198,7 +195,18 @@ static int get_input(void)
 	FD_ZERO(&rfds);
 	FD_SET(0, &rfds);
 
-	if (pselect(1, &rfds, NULL, NULL, &tout, NULL) == 0) return F_TIMEOUT;
+	errno = 0;
+	ret = pselect(1, &rfds, NULL, NULL, &tout, NULL);
+	if (ret < 0) {
+		if (errno == EINTR) {
+			return F_QUIT;
+		}
+		dprintf("pselect: %s", strerror(errno));
+		return F_ERROR;
+
+	} else if (ret == 0) {
+		return F_TIMEOUT;
+	}
 
 	c = wgetch(wfield);
 	return (c == K_QUIT) ? F_QUIT : c;
@@ -253,6 +261,7 @@ static void gameover(int no)
 	static const char *msgs[] = {
 		"ALL CLEAR",
 		"BOMBED",
+		"ERROR",
 	};
 	werase(wguide);
 	mvwprintw(wguide, 0, 0, "%s, hit any key to quit...", msgs[no]);
@@ -416,11 +425,7 @@ int main(int argc, char **argv)
 
 	while (!sig) {
 		if (debug) {
-			field *p = get_field(curr_y, curr_x);
-
-			werase(wdebug);
-			mvwprintw(wdebug, 0, 0, "%dx%d, y:%d x:%d st:%s", LINES, COLS, curr_y, curr_x, dump_field(p));
-			wnoutrefresh(wdebug);
+			dprintf("%dx%d, y:%d x:%d st:%s, sig:%d", LINES, COLS, curr_y, curr_x, dump_field(get_field(curr_y, curr_x)), sig);
 		}
 
 		update_guide(nbombs);
@@ -429,8 +434,14 @@ int main(int argc, char **argv)
 		doupdate();
 
 		c = get_input();
-		if (c == F_QUIT) break;
-		else if (c == F_TIMEOUT) continue;
+		if (c == F_QUIT) {
+			break;
+		} else if (c == F_ERROR) {
+			gameover(MSG_ERROR);
+			break;
+		} else if (c == F_TIMEOUT) {
+			continue;
+		}
 
 		if (K_ISMOVE(c)) {
 			move_cursol(c);
