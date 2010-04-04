@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <curses.h>
 #include <signal.h>
@@ -15,6 +16,10 @@
 #define K_QUIT  'q'
 #define K_MARK  'm'
 #define K_OPEN  ' '
+
+#define T_TIMEOUT 100 * 1000 * 1000;
+#define F_QUIT 0
+#define F_TIMEOUT -1
 
 #define M_BOMB  '*'
 #define M_MARK  '@'
@@ -178,17 +183,25 @@ static void draw_canvas(void)
 		}
 	}
 	wmove(wfield, 0, 0);
-//	wrefresh(wcanvas);
 	wnoutrefresh(wcanvas);
 }
 
-static int curr_y, curr_x;
 static int get_input(void)
 {
 	int c;
-	wmove(wfield, curr_y, curr_x);
+	fd_set rfds;
+	struct timespec tout;
+
+	tout.tv_sec = 0;
+	tout.tv_nsec = T_TIMEOUT;
+
+	FD_ZERO(&rfds);
+	FD_SET(0, &rfds);
+
+	if (pselect(1, &rfds, NULL, NULL, &tout, NULL) == 0) return F_TIMEOUT;
+
 	c = wgetch(wfield);
-	return (c == K_QUIT) ? EOF : c;
+	return (c == K_QUIT) ? F_QUIT : c;
 }
 
 static void reverse_mark(int y, int x)
@@ -203,6 +216,7 @@ static void reverse_mark(int y, int x)
 	}
 }
 
+static int curr_y, curr_x;
 static void move_cursol(int c)
 {
 	switch (c) {
@@ -243,7 +257,7 @@ static void gameover(int no)
 	werase(wguide);
 	mvwprintw(wguide, 0, 0, "%s, hit any key to quit...", msgs[no]);
 	wnoutrefresh(wguide);
-	refresh();
+	doupdate();
 	getch();
 }
 
@@ -334,8 +348,20 @@ static int rest_bombs(int nbombs)
 
 static void update_guide(int nbombs)
 {
+	static struct timeval uptime;
+	static int set_uptime;
+	if (!set_uptime) {
+		gettimeofday(&uptime, NULL);
+		set_uptime = 1;
+	}
+	struct timeval now;
+	struct timeval res;
+
+	gettimeofday(&now, NULL);
+	timersub(&now, &uptime, &res);
+
 	werase(wguide);
-	wprintw(wguide, "move:<cursol>,h,j,k,l open:<spc> mark:m quit:q rest:%d", rest_bombs(nbombs));
+	wprintw(wguide, "move:<cursol>,h,j,k,l open:<spc> mark:m quit:q rest:%d up:%ld", rest_bombs(nbombs), res.tv_sec, res.tv_usec);
 	wnoutrefresh(wguide);
 }
 
@@ -398,9 +424,13 @@ int main(int argc, char **argv)
 		}
 
 		update_guide(nbombs);
-		refresh();
+		wmove(wfield, curr_y, curr_x);
+		wnoutrefresh(wfield);
+		doupdate();
 
-		if ((c = get_input()) == EOF) break;
+		c = get_input();
+		if (c == F_QUIT) break;
+		else if (c == F_TIMEOUT) continue;
 
 		if (K_ISMOVE(c)) {
 			move_cursol(c);
