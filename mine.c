@@ -19,9 +19,10 @@
 #define K_OPEN  ' '
 
 #define T_TIMEOUT 100 * 1000 * 1000;
+
 #define F_QUIT 0
 #define F_ERROR -1
-#define F_TIMEOUT -2
+#define F_CONTINUE -2
 
 #define M_BOMB  '*'
 #define M_MARK  '@'
@@ -112,44 +113,58 @@ static void setup_fields(int y, int x, int nbombs)
 
 }
 
-static int sig;
-static void sig_hndl(int signo)
+static int sig_exit;
+static void sig_exit_handler(int signo)
 {
-	sig = 1;
+	sig_exit = 1;
+}
+
+static int sig_resize;
+static void sig_resize_handler(int signo)
+{
+	sig_resize = 1;
 }
 
 static void handle_signal(void)
 {
-	struct sigaction sigact;
+	struct sigaction sigexit, sigresize;
 
-	sigemptyset(&sigact.sa_mask);
-	sigact.sa_handler = sig_hndl;
-	sigact.sa_flags = SA_RESTART;
-	sigaction(SIGTERM, &sigact, NULL);
-	sigaction(SIGINT, &sigact, NULL);
-	sigaction(SIGSEGV, &sigact, NULL);
-	sigaction(SIGHUP, &sigact, NULL);
+	memset(&sigexit, 0, sizeof sigexit);
+	sigemptyset(&sigexit.sa_mask);
+	sigexit.sa_handler = sig_exit_handler;
+	sigaction(SIGTERM, &sigexit, NULL);
+	sigaction(SIGINT, &sigexit, NULL);
+	sigaction(SIGSEGV, &sigexit, NULL);
+	sigaction(SIGHUP, &sigexit, NULL);
+
+	memset(&sigresize, 0, sizeof sigresize);
+	sigemptyset(&sigresize.sa_mask);
+	sigresize.sa_handler = sig_resize_handler;
+	sigaction(SIGWINCH, &sigresize, NULL);
 }
 
 static WINDOW *wcanvas;
 static WINDOW *wfield;
 static WINDOW *wguide;
 
+static int lines, cols;
 static void init_screen(void)
 {
 	initscr();
 	cbreak();
 	noecho();
+	getmaxyx(stdscr, lines, cols);
 }
 
 static void init_canvas(void)
 {
-	wcanvas = subwin(stdscr, canvas_h, canvas_w, 1, 0);
-	wguide = subwin(stdscr, 1, COLS, 0, 0);
-	wdebug = subwin(stdscr, 1, COLS, LINES-1, 0);
+	wcanvas = newwin(canvas_h, canvas_w, 1, 0);
+	wguide = newwin(1, cols, 0, 0);
+	wdebug = newwin(1, cols, lines-1, 0);
 	wattron(wguide, A_BOLD);
 	wfield = subwin(wcanvas, y_max, x_max, 2, 1);
 	keypad(wfield, TRUE);
+	wnoutrefresh(stdscr);
 }
 
 static void destroy_screen(void)
@@ -159,6 +174,8 @@ static void destroy_screen(void)
 
 static void destroy_canvas(void)
 {
+	erase();
+	doupdate();
 	if (wfield) delwin(wfield);
 	if (wdebug) delwin(wdebug);
 	if (wguide) delwin(wguide);
@@ -169,7 +186,7 @@ static void draw_canvas(void)
 {
 	int y, x;
 
-	box(wcanvas, '|', '-');
+	wborder(wcanvas, 0, 0, 0, 0, 0, 0, 0, 0);
 	for (y = 0; y < y_max; y++) {
 		for (x = 0; x < x_max; x++) {
 			mvwaddch(wfield, y, x, M_CLOSE);
@@ -180,6 +197,34 @@ static void draw_canvas(void)
 	}
 	wmove(wfield, 0, 0);
 	wnoutrefresh(wcanvas);
+}
+
+static void resize_canvas(void)
+{
+	endwin();
+	refresh();
+	getmaxyx(stdscr, lines, cols);
+
+	werase(stdscr);
+	werase(wguide);
+	werase(wdebug);
+
+	wnoutrefresh(stdscr);
+	wnoutrefresh(wguide);
+	wnoutrefresh(wdebug);
+
+	doupdate();
+
+	wresize(wguide, 1, cols);
+
+	wresize(wdebug, 1, cols);
+	mvwin(wdebug, lines-1, 0);
+
+	touchwin(wcanvas);
+	wnoutrefresh(wcanvas);
+	wnoutrefresh(wfield);
+
+	doupdate();
 }
 
 static int get_input(void)
@@ -199,13 +244,13 @@ static int get_input(void)
 	ret = pselect(1, &rfds, NULL, NULL, &tout, NULL);
 	if (ret < 0) {
 		if (errno == EINTR) {
-			return F_QUIT;
+			return F_CONTINUE;
 		}
 		dprintf("pselect: %s", strerror(errno));
 		return F_ERROR;
 
 	} else if (ret == 0) {
-		return F_TIMEOUT;
+		return F_CONTINUE;
 	}
 
 	c = wgetch(wfield);
@@ -253,7 +298,7 @@ static void usage(const char *prog)
 
 static int outbounds(int y, int x, int nbombs)
 {
-	return y < 0 || LINES < y || x < 0 || COLS < x || y*x < nbombs;
+	return y < 0 || lines < y || x < 0 || cols < x || y*x < nbombs;
 }
 
 static void gameover(int no)
@@ -423,9 +468,14 @@ int main(int argc, char **argv)
 	init_canvas();
 	draw_canvas();
 
-	while (!sig) {
+	while (!sig_exit) {
+		if (sig_resize) {
+			resize_canvas();
+			sig_resize = 0;
+		}
+
 		if (debug) {
-			dprintf("%dx%d, y:%d x:%d st:%s, sig:%d", LINES, COLS, curr_y, curr_x, dump_field(get_field(curr_y, curr_x)), sig);
+			dprintf("%dx%d, y:%d x:%d st:%s, sigexit:%d", lines, cols, curr_y, curr_x, dump_field(get_field(curr_y, curr_x)), sig_exit);
 		}
 
 		update_guide(nbombs);
@@ -439,7 +489,7 @@ int main(int argc, char **argv)
 		} else if (c == F_ERROR) {
 			gameover(MSG_ERROR);
 			break;
-		} else if (c == F_TIMEOUT) {
+		} else if (c == F_CONTINUE) {
 			continue;
 		}
 
