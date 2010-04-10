@@ -113,13 +113,13 @@ static void setup_fields(int y, int x, int nbombs)
 
 }
 
-static int sig_exit;
+static sig_atomic_t sig_exit;
 static void sig_exit_handler(int signo)
 {
 	sig_exit = 1;
 }
 
-static int sig_resize;
+static sig_atomic_t sig_resize;
 static void sig_resize_handler(int signo)
 {
 	sig_resize = 1;
@@ -301,10 +301,10 @@ static int outbounds(int y, int x, int nbombs)
 	return y < 0 || lines < y || x < 0 || cols < x || y*x < nbombs;
 }
 
-static void gameover(int no)
+static void game_over(int no)
 {
 	static const char *msgs[] = {
-		"ALL CLEAR",
+		"CLEARED",
 		"BOMBED",
 		"ERROR",
 	};
@@ -487,7 +487,7 @@ int main(int argc, char **argv)
 		if (c == F_QUIT) {
 			break;
 		} else if (c == F_ERROR) {
-			gameover(MSG_ERROR);
+			game_over(MSG_ERROR);
 			break;
 		} else if (c == F_CONTINUE) {
 			continue;
@@ -504,13 +504,13 @@ int main(int argc, char **argv)
 				int isbomb = open_field(curr_y, curr_x);
 				if (isbomb) {
 					draw_answer();
-					gameover(MSG_BOMBED);
+					game_over(MSG_BOMBED);
 					break;
 				}
 			}
 
 			if (all_clear()) {
-				gameover(MSG_CLEAR);
+				game_over(MSG_CLEAR);
 				break;
 			}
 		}
