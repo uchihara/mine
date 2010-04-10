@@ -1,9 +1,11 @@
 CFLAGS = -Wall -g -O2
 CFLAGS = -Wall -g
+OBJS = mine.o screens.o fields.o signals.o
+
 all: mine
 
-mine: mine.o
-	cc -o $@ $< -lncurses
+mine: $(OBJS)
+	cc -o $@ $(OBJS) -lncurses
 
 clean:
-	rm -f mine mine.o
+	rm -f mine $(OBJS)
