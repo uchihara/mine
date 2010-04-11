@@ -1,3 +1,4 @@
+#include "config.h"
 #include <stdio.h>
 #include <string.h>
 #include <curses.h>
@@ -37,11 +38,7 @@ void dbgprintf(const char *fmt, ...)
 
 	va_start(ap, fmt);
 	werase(wdebug);
-#ifdef SOLARIS
-	vwprintw(wdebug, (char *)fmt, ap);
-#else
-	vwprintw(wdebug, fmt, ap);
-#endif
+	vwprintw(wdebug, (char *)fmt, ap); /* cast for solaris 10 */
 	wnoutrefresh(wdebug);
 	va_end(ap);
 }
