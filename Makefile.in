@@ -166,7 +166,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 mine_SOURCES = fields.c mine.c screens.c signals.c
-mine_CFLAGS = -Wall -g -O2
+mine_CFLAGS = -Wall
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
