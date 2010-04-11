@@ -10,6 +10,26 @@
 #include "screens.h"
 #include "fields.h"
 
+#ifndef HAVE_WRESIZE
+static int wresize(WINDOW *win, int lines, int columns)
+{
+	return OK;
+}
+#endif
+
+#ifndef HAVE_TIMERSUB
+/* from /usr/include/sys/time.h */
+# define timersub(a, b, result)                                               \
+  do {                                                                        \
+    (result)->tv_sec = (a)->tv_sec - (b)->tv_sec;                             \
+    (result)->tv_usec = (a)->tv_usec - (b)->tv_usec;                          \
+    if ((result)->tv_usec < 0) {                                              \
+      --(result)->tv_sec;                                                     \
+      (result)->tv_usec += 1000000;                                           \
+    }                                                                         \
+  } while (0)
+#endif
+
 static WINDOW *wdebug;
 void dbgprintf(const char *fmt, ...)
 {
@@ -17,7 +37,11 @@ void dbgprintf(const char *fmt, ...)
 
 	va_start(ap, fmt);
 	werase(wdebug);
+#ifdef SOLARIS
+	vwprintw(wdebug, (char *)fmt, ap);
+#else
 	vwprintw(wdebug, fmt, ap);
+#endif
 	wnoutrefresh(wdebug);
 	va_end(ap);
 }

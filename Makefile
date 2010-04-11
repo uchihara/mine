@@ -5,7 +5,7 @@ OBJS = mine.o screens.o fields.o signals.o
 all: mine
 
 mine: $(OBJS)
-	cc -o $@ $(OBJS) -lncurses
+	$(CC) -o $@ $(OBJS) -lcurses
 
 clean:
 	rm -f mine $(OBJS)
