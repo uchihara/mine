@@ -8,6 +8,7 @@
 #include "fields.h"
 #include "screens.h"
 #include "signals.h"
+#include "timer.h"
 
 static int debug;
 
@@ -46,6 +47,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	init_uptime();
 	setup_fields(y, x, nbombs);
 	init_canvas(get_canvas_h(), get_canvas_w(), get_y_max(), get_x_max());
 	draw_canvas(get_y_max(), get_x_max(), debug);

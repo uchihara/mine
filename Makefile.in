@@ -51,7 +51,8 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_mine_OBJECTS = mine-fields.$(OBJEXT) mine-mine.$(OBJEXT) \
-	mine-screens.$(OBJEXT) mine-signals.$(OBJEXT)
+	mine-screens.$(OBJEXT) mine-signals.$(OBJEXT) \
+	mine-timer.$(OBJEXT)
 mine_OBJECTS = $(am_mine_OBJECTS)
 mine_LDADD = $(LDADD)
 mine_LINK = $(CCLD) $(mine_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
@@ -165,7 +166,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-mine_SOURCES = fields.c mine.c screens.c signals.c
+mine_SOURCES = fields.c mine.c screens.c signals.c timer.c
 mine_CFLAGS = -Wall
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
@@ -274,6 +275,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mine-mine.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mine-screens.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mine-signals.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mine-timer.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -344,6 +346,20 @@ mine-signals.obj: signals.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='signals.c' object='mine-signals.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(mine_CFLAGS) $(CFLAGS) -c -o mine-signals.obj `if test -f 'signals.c'; then $(CYGPATH_W) 'signals.c'; else $(CYGPATH_W) '$(srcdir)/signals.c'; fi`
+
+mine-timer.o: timer.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(mine_CFLAGS) $(CFLAGS) -MT mine-timer.o -MD -MP -MF $(DEPDIR)/mine-timer.Tpo -c -o mine-timer.o `test -f 'timer.c' || echo '$(srcdir)/'`timer.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/mine-timer.Tpo $(DEPDIR)/mine-timer.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='timer.c' object='mine-timer.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(mine_CFLAGS) $(CFLAGS) -c -o mine-timer.o `test -f 'timer.c' || echo '$(srcdir)/'`timer.c
+
+mine-timer.obj: timer.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(mine_CFLAGS) $(CFLAGS) -MT mine-timer.obj -MD -MP -MF $(DEPDIR)/mine-timer.Tpo -c -o mine-timer.obj `if test -f 'timer.c'; then $(CYGPATH_W) 'timer.c'; else $(CYGPATH_W) '$(srcdir)/timer.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/mine-timer.Tpo $(DEPDIR)/mine-timer.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='timer.c' object='mine-timer.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(mine_CFLAGS) $(CFLAGS) -c -o mine-timer.obj `if test -f 'timer.c'; then $(CYGPATH_W) 'timer.c'; else $(CYGPATH_W) '$(srcdir)/timer.c'; fi`
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \

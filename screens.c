@@ -6,31 +6,16 @@
 #include <curses.h>
 #include <stdarg.h>
 #include <unistd.h>
-#include <errno.h>
-#include <sys/select.h>
-#include <sys/time.h>
 #include "mine.h"
 #include "screens.h"
 #include "fields.h"
+#include "timer.h"
 
 #ifndef HAVE_WRESIZE
 static int wresize(WINDOW *win, int lines, int columns)
 {
 	return OK;
 }
-#endif
-
-#ifndef timersub
-/* from /usr/include/sys/time.h */
-# define timersub(a, b, result)                                               \
-  do {                                                                        \
-    (result)->tv_sec = (a)->tv_sec - (b)->tv_sec;                             \
-    (result)->tv_usec = (a)->tv_usec - (b)->tv_usec;                          \
-    if ((result)->tv_usec < 0) {                                              \
-      --(result)->tv_sec;                                                     \
-      (result)->tv_usec += 1000000;                                           \
-    }                                                                         \
-  } while (0)
 #endif
 
 static WINDOW *wdebug;
@@ -138,28 +123,10 @@ void resize_canvas(void)
 int get_input(void)
 {
 	int c;
-	fd_set rfds;
-	struct timespec tout;
 	int ret;
 
-	tout.tv_sec = 0;
-	tout.tv_nsec = T_TIMEOUT;
-
-	FD_ZERO(&rfds);
-	FD_SET(0, &rfds);
-
-	errno = 0;
-	ret = pselect(1, &rfds, NULL, NULL, &tout, NULL);
-	if (ret < 0) {
-		if (errno == EINTR) {
-			return F_CONTINUE;
-		}
-		dbgprintf("pselect: %s", strerror(errno));
-		return F_ERROR;
-
-	} else if (ret == 0) {
-		return F_CONTINUE;
-	}
+	ret = watch_input();
+	if (ret != 0) return ret;
 
 	c = wgetch(wfield);
 	return (c == K_QUIT) ? F_QUIT : c;
@@ -181,20 +148,8 @@ void game_over(int no)
 
 void update_guide(int nbombs)
 {
-	static struct timeval uptime;
-	static int set_uptime;
-	if (!set_uptime) {
-		gettimeofday(&uptime, NULL);
-		set_uptime = 1;
-	}
-	struct timeval now;
-	struct timeval res;
-
-	gettimeofday(&now, NULL);
-	timersub(&now, &uptime, &res);
-
 	werase(wguide);
-	wprintw(wguide, "move:<cursol>,h,j,k,l open:<spc> mark:m quit:q rest:%d up:%ld", rest_bombs(nbombs), res.tv_sec, res.tv_usec);
+	wprintw(wguide, "move:<cursol>,h,j,k,l open:<spc> mark:m quit:q rest:%d up:%ld", rest_bombs(nbombs), get_uptime());
 	wnoutrefresh(wguide);
 }
 
