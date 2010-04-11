@@ -11,7 +11,7 @@
 #include "fields.h"
 
 static WINDOW *wdebug;
-void dprintf(const char *fmt, ...)
+void dbgprintf(const char *fmt, ...)
 {
 	va_list ap;
 
@@ -131,7 +131,7 @@ int get_input(void)
 		if (errno == EINTR) {
 			return F_CONTINUE;
 		}
-		dprintf("pselect: %s", strerror(errno));
+		dbgprintf("pselect: %s", strerror(errno));
 		return F_ERROR;
 
 	} else if (ret == 0) {

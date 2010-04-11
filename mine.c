@@ -54,7 +54,7 @@ int main(int argc, char **argv)
 		}
 
 		if (debug) {
-			dprintf("%dx%d, y:%d x:%d st:%s", get_lines(), get_cols(), get_curr_y(), get_curr_x(), dump_field(get_field(get_curr_y(), get_curr_x())));
+			dbgprintf("%dx%d, y:%d x:%d st:%s", get_lines(), get_cols(), get_curr_y(), get_curr_x(), dump_field(get_field(get_curr_y(), get_curr_x())));
 		}
 
 		update_guide(nbombs);

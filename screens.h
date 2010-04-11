@@ -1,7 +1,7 @@
 #ifndef __MINE_SCREENS_H__
 #define __MINE_SCREENS_H__
 
-void dprintf(const char *fmt, ...);
+void dbgprintf(const char *fmt, ...);
 void init_screen(void);
 void init_canvas(int canvas_h, int canvas_w, int y_max, int x_max);
 void destroy_screen(void);
