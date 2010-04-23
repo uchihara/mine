@@ -18,7 +18,7 @@ static int wresize(WINDOW *win, int lines, int columns)
 }
 #endif
 
-#ifndef HAVE_TIMERSUB
+#ifndef timersub
 /* from /usr/include/sys/time.h */
 # define timersub(a, b, result)                                               \
   do {                                                                        \
