@@ -48,12 +48,11 @@ field *get_field(int y, int x)
 	return &fields[(y+1)*canvas_w + x+1];
 }
 
-void setup_fields(int y, int x, int nbombs)
+void init_fields(int y, int x)
 {
 	int i;
 	field *p;
 
-	srand(time(NULL));
 	y_max = y;
 	x_max = x;
 	canvas_h = y_max+2;
@@ -72,11 +71,18 @@ void setup_fields(int y, int x, int nbombs)
 			p->bomb = 0;
 		}
 	}
+}
+
+void set_bombs(int ignore_y, int ignore_x, int nbombs)
+{
+	int y, x;
+	srand(time(NULL));
 
 	while (nbombs > 0) {
 		field *p;
 		y = rand() % y_max;
 		x = rand() % x_max;
+		if (y == ignore_y && x == ignore_x) continue;
 		p = get_field(y, x);
 		if (!p->bomb) {
 			p->bomb = 1;

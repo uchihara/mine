@@ -48,10 +48,11 @@ int main(int argc, char **argv)
 	}
 
 	init_uptime();
-	setup_fields(y, x, nbombs);
+	init_fields(y, x);
 	init_canvas(get_canvas_h(), get_canvas_w(), get_y_max(), get_x_max());
 	draw_canvas(get_y_max(), get_x_max(), debug);
 
+	int first_open = 1;
 	while (!caught_sig_exit()) {
 		if (caught_sig_resize()) {
 			resize_canvas();
@@ -85,6 +86,11 @@ int main(int argc, char **argv)
 				apply_mark(debug);
 
 			} else if (c == K_OPEN) {
+				if (first_open) {
+					set_bombs(get_curr_y(), get_curr_x(), nbombs);
+					first_open = 0;
+				}
+
 				int isbomb = open_field(get_curr_y(), get_curr_x());
 				if (isbomb) {
 					draw_answer();
