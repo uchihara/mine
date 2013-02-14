@@ -10,3 +10,5 @@ configure
 autom4te.cache/
 .deps/
 stamp-h1
+mine
+*.o
