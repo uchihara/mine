@@ -5,7 +5,7 @@ rm -rf \
 config.status configure libtool config/Makefile config/Makefile.in \
 config/gdlib-config tests/Makefile tests/Makefile.in"
 
-if autoreconf 2>/dev/null || \
+if autoreconf 2>/dev/null && [ -x configure ] || \
   aclocal 2>/dev/null && \
   automake --gnu --add-missing 2>/dev/null && \
   autoconf 2>/dev/null && [ -x configure ]; then
