@@ -12,3 +12,4 @@ autom4te.cache/
 stamp-h1
 mine
 *.o
+.*.swp
