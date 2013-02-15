@@ -3,8 +3,8 @@
 
 AC_PREREQ([2.65])
 AC_INIT([mine], [1.0.0], [uchihara@gmail.com])
-AM_INIT_AUTOMAKE([mine], [1.0.0], [uchihara@gmail.com])
 AC_CONFIG_SRCDIR([mine.c])
+AM_INIT_AUTOMAKE
 AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
