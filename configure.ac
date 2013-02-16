@@ -16,7 +16,11 @@ AC_CHECK_LIB([curses], [initscr], [], [AC_MSG_ERROR([curses library does not fin
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h string.h sys/time.h unistd.h signal.h stdarg.h sys/select.h])
-AC_CHECK_HEADER(curses.h, [], [AC_MSG_ERROR([curses.h does not find, you must install before])])
+AC_CHECK_HEADERS([curses.h ncurses/curses.h], [has_curses_h=1 break], [has_curses_h=0])
+
+if test $has_curses_h = 0; then
+	AC_MSG_ERROR([curses.h does not find, you must install before])
+fi
 
 # Checks for typedefs, structures, and compiler characteristics.
 

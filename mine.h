@@ -1,7 +1,7 @@
 #ifndef __MINE_H__
 #define __MINE_H__
 
-#include <curses.h>
+#include "mycurses.h"
 
 #define K_UP    'k'
 #define K_DOWN  'j'

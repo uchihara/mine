@@ -3,7 +3,7 @@
 #endif
 #include <stdio.h>
 #include <string.h>
-#include <curses.h>
+#include "mycurses.h"
 #include <stdarg.h>
 #include <unistd.h>
 #include "mine.h"
