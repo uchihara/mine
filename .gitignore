@@ -14,3 +14,5 @@ mine
 *.exe
 *.o
 .*.swp
+TAGS
+tags
