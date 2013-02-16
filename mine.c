@@ -22,6 +22,16 @@ static int outbounds(int y, int x, int nbombs)
 	return y < 0 || get_lines() < y || x < 0 || get_cols() < x || y*x < nbombs;
 }
 
+static void terminate(void)
+{
+	static int terminated = 0;
+	if (!terminated) {
+		destroy_canvas();
+		destroy_screen();
+		terminated = 1;
+	}
+}
+
 int main(int argc, char **argv)
 {
 	int c;
@@ -30,6 +40,7 @@ int main(int argc, char **argv)
 
 	init_screen();
 	handle_signal();
+	atexit(terminate);
 
 	while ((c = getopt(argc, argv, "y:x:b:D")) != -1) {
 		switch (c) {
@@ -43,6 +54,7 @@ int main(int argc, char **argv)
 
 	if (!nbombs) nbombs = y * x * 0.25;
 	if (!opterr || outbounds(y, x, nbombs)) {
+		terminate();
 		usage(*argv);
 		return 1;
 	}
@@ -107,9 +119,6 @@ int main(int argc, char **argv)
 
 		refresh_field();
 	}
-
-	destroy_canvas();
-	destroy_screen();
 
 	return 1;
 }
