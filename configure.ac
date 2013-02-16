@@ -12,10 +12,11 @@ AC_PROG_CC
 
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lcurses':
-AC_CHECK_LIB([curses], [initscr])
+AC_CHECK_LIB([curses], [initscr], [], [AC_MSG_ERROR([curses library does not find, you must install before])])
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h string.h sys/time.h unistd.h signal.h stdarg.h sys/select.h])
+AC_CHECK_HEADER(curses.h, [], [AC_MSG_ERROR([curses.h does not find, you must install before])])
 
 # Checks for typedefs, structures, and compiler characteristics.
 
