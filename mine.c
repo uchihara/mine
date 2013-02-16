@@ -12,15 +12,27 @@
 
 static int debug;
 
+static int get_max_lines(void)
+{
+	return get_lines() - 3;
+}
+
+static int get_max_cols(void)
+{
+	return get_cols() - 2;
+}
+
 static void usage(const char *prog)
 {
-	printf("usage: %s [-y height] [-x width] [-b boms%%=0.20]\n", prog);
-	printf("\t1 <= y <= %d, 1 <= x <= %d\n", get_lines(), get_cols());
+	printf("usage: %s [-y height] [-x width] [-M ] [-b boms%%=0.20]\n", prog);
+	printf("\t-y: 1 <= y <= %d\n", get_max_lines());
+	printf("\t-x: 1 <= x <= %d\n", get_max_cols());
+	printf("\t-M: y=%d, x=%d\n", get_max_lines(), get_max_cols());
 }
 
 static int outbounds(int y, int x, int nbombs)
 {
-	return y < 0 || get_lines() < y || x < 0 || get_cols() < x || y*x < nbombs;
+	return y < 0 || get_max_lines() < y || x < 0 || get_max_cols() < x || y*x < nbombs;
 }
 
 static void terminate(void)
@@ -44,10 +56,11 @@ int main(int argc, char **argv)
 	handle_signal();
 	atexit(terminate);
 
-	while ((c = getopt(argc, argv, "y:x:b:D")) != -1) {
+	while ((c = getopt(argc, argv, "y:x:Mb:D")) != -1) {
 		switch (c) {
 			case 'y': y = atoi(optarg); break;
 			case 'x': x = atoi(optarg); break;
+			case 'M': y = get_max_lines(); x = get_max_cols(); break;
 			case 'b': bomsp = atof(optarg); break;
 			case 'D': debug = 1; break;
 			default: opterr = 1; break;
