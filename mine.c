@@ -14,7 +14,8 @@ static int debug;
 
 static void usage(const char *prog)
 {
-	printf("usage: %s [-y height] [-x width] [-b bombs]\n", prog);
+	printf("usage: %s [-y height] [-x width] [-b boms%%=0.20]\n", prog);
+	printf("\t1 <= y <= %d, 1 <= x <= %d\n", get_lines(), get_cols());
 }
 
 static int outbounds(int y, int x, int nbombs)
@@ -37,6 +38,7 @@ int main(int argc, char **argv)
 	int c;
 	int y = 10, x = 20;
 	int nbombs = 0;
+	double bomsp = 0.20;
 
 	init_screen();
 	handle_signal();
@@ -46,13 +48,13 @@ int main(int argc, char **argv)
 		switch (c) {
 			case 'y': y = atoi(optarg); break;
 			case 'x': x = atoi(optarg); break;
-			case 'b': nbombs = atoi(optarg); break;
+			case 'b': bomsp = atof(optarg); break;
 			case 'D': debug = 1; break;
 			default: opterr = 1; break;
 		}
 	}
 
-	if (!nbombs) nbombs = y * x * 0.25;
+	nbombs = y * x * bomsp;
 	if (!opterr || outbounds(y, x, nbombs)) {
 		terminate();
 		usage(*argv);
