@@ -56,6 +56,7 @@ int main(int argc, char **argv)
 	handle_signal();
 	atexit(terminate);
 
+  opterr = 0;
 	while ((c = getopt(argc, argv, "y:x:Mb:D")) != -1) {
 		switch (c) {
 			case 'y': y = atoi(optarg); break;
@@ -68,7 +69,7 @@ int main(int argc, char **argv)
 	}
 
 	nbombs = y * x * bomsp;
-	if (!opterr || outbounds(y, x, nbombs)) {
+	if (opterr || outbounds(y, x, nbombs)) {
 		terminate();
 		usage(*argv);
 		return 1;
