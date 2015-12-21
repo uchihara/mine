@@ -24,7 +24,7 @@ static int get_max_cols(void)
 
 static void usage(const char *prog)
 {
-	printf("usage: %s [-y height] [-x width] [-M ] [-b boms%%=0.20]\n", prog);
+	printf("usage: %s [-y height] [-x width] [-M] [-b boms%%=0.20]\n", prog);
 	printf("\t-y: 1 <= y <= %d\n", get_max_lines());
 	printf("\t-x: 1 <= x <= %d\n", get_max_cols());
 	printf("\t-M: y=%d, x=%d\n", get_max_lines(), get_max_cols());
